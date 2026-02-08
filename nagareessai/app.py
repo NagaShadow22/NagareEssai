@@ -1,0 +1,340 @@
+# -*- coding: utf-8 -*-
+
+# - AnimeList : affiche la liste des animes (page d'accueil)
+# - AnimeApp  : composant RACINE, contient self.content et gere la navigation
+# - AnimeForm : formulaire de creation / modification
+#
+# Flux : AnimeApp rend self.content
+#        self.content bascule entre AnimeList et AnimeForm via becomes()
+
+from nagare import component, presentation, var
+# component    : Component() encapsule un objet Python en composant web Nagare
+# presentation : @render_for associe une vue HTML a une classe Python
+# var          : Var() est un conteneur de valeur utilisable comme callback de formulaire
+
+from nagareessai.models import Anime
+# Importe notre modele Anime (Elixir Entity) pour les operations CRUD
+
+# COMPOSANT 1 : AnimeList — Page d'accueil, liste des animes
+
+class AnimeList(object):
+    """Affiche tous les animes de la BDD avec les actions creer/modifier/supprimer
+    Recoit une reference vers AnimeApp (self.app) pour pouvoir
+    declencher la navigation (basculer vers le formulaire)"""
+
+    def __init__(self, app):
+        self.app = app
+        # Stocke une reference vers le composant parent (AnimeApp)
+        # Necessaire pour appeler app.show_form() et naviguer vers le formulaire
+
+    def create_anime(self):
+        "Demande a AnimeApp de basculer vers un formulaire vide."
+        self.app.show_form(anime=None)
+        # Appelle la methode de AnimeApp qui fait content.becomes(AnimeForm())
+
+    def edit_anime(self, anime_id):
+        "Demande a AnimeApp de basculer vers un formulaire pre-rempli."
+        anime = Anime.get(anime_id)
+        # Anime.get(id) : methode Elixir qui execute SELECT * FROM anime WHERE id = ?
+        # Retourne l'objet Anime ou None si non trouve
+        if anime:
+            self.app.show_form(anime=anime)
+
+    def delete_anime(self, anime_id):
+        "Supprime un anime de la BDD. La page se rafraichit automatiquement."
+        anime = Anime.get(anime_id)
+        if anime:
+            anime.delete()
+            # anime.delete() : methode Elixir -> DELETE FROM anime WHERE id = ?
+            # Nagare commit la transaction automatiquement en fin de requete
+
+
+# --- Rendu HTML de la liste des animes ---
+@presentation.render_for(AnimeList)
+def render_anime_list(self, h, *args):
+    """Genere le HTML de la page d'accueil.
+    Args:
+        self : l'instance AnimeList
+        h    : renderer HTML
+        *args: arguments supplementaires"""
+
+    # --- TITRE ---
+    h << h.h1(u'Mes Animes')
+    # h << element : ajoute l'element au DOM courant
+    # h.h1('texte') cree <h1>texte</h1>
+
+    # --- BOUTON CREER ---
+    h << h.a('+ Creer un Anime', class_='btn btn-create').action(self.create_anime)
+    # h.a('texte') cree un lien <a>texte</a>
+    # .action(self.create_anime) : au clic, Nagare appelle self.create_anime()
+
+    h << h.hr
+    # <hr> : ligne de separation
+
+    # --- REQUETE BDD : recupere tous les animes ---
+    animes = Anime.query.all()
+    # Anime.query : objet Query Elixir/SQLAlchemy pour la table anime
+    # .all() : execute SELECT * FROM anime, retourne une liste d'objets Anime
+
+    if not animes:
+        # --- CAS VIDE : aucun anime en BDD ---
+        h << h.p(u'Aucun anime enregistre. Cliquez sur "Creer" pour commencer !',
+                 class_='empty-message')
+    else:
+        # --- GRILLE DE CARTES ---
+        with h.div(class_='anime-grid'):
+            # Conteneur CSS Grid pour afficher les animes en cartes
+
+            for anime in animes:
+                # Boucle sur chaque anime de la BDD
+
+                with h.div(class_='anime-card'):
+                    # Chaque anime = une carte
+
+                    h << h.img(src='/static/nagareessai/images/' + anime.imagepath,
+                               alt=anime.title,
+                               class_='anime-img')
+                    # Image de l'anime
+                    # Le chemin complet : /static/nagareessai/ + contenu de la colonne imagepath
+                    # Ex: imagepath='images/naruto.jpg' -> /static/nagareessai/images/naruto.jpg
+
+                    h << h.h3(anime.title)
+                    # Titre en <h3>
+
+                    h << h.p(u'Saison : ' + str(anime.numberseason) + ' | Episodes : ' + str(anime.numberepisodes))
+                    # Infos saison et episodes
+
+                    h << h.p(anime.description, class_='anime-desc')
+                    # Description (tronquee visuellement par le CSS)
+
+                    with h.div(class_='anime-actions'):
+                        # Zone des boutons d'action
+
+                        h << h.a('Modifier', class_='btn btn-edit').action(
+                            self.edit_anime, anime.id
+                        )
+                        # Au clic -> self.edit_anime(anime.id)
+                        # Le 2e arg de .action() est passe comme parametre a la methode
+
+                        h << ' '
+                        # Espace entre les boutons
+
+                        h << h.a('Supprimer', class_='btn btn-delete').action(
+                            self.delete_anime, anime.id
+                        )
+                        # Au clic -> self.delete_anime(anime.id)
+
+    return h.root
+
+
+# COMPOSANT 2 : AnimeForm — Formulaire creation / modification
+
+class AnimeForm(object):
+    """Formulaire pour creer ou modifier un anime.
+
+    Si anime=None  -> mode creation (champs vides)
+    Si anime=objet -> mode edition (champs pre-remplis avec les donnees existantes)
+    """
+
+    def __init__(self, anime=None):
+        self.anime = anime
+        # Stocke l'anime existant (ou None si creation)
+
+        #   var.Var(valeur_initiale) cree un conteneur reactif :
+        #   var()          -> retourne la valeur actuelle
+        #   var(nouvelle)  -> modifie la valeur et la retourne
+        #   Passe comme .action(var) sur un input, Nagare appelle var(texte_saisi)
+        self.title = var.Var(anime.title if anime else '')
+        self.imagepath = var.Var(anime.imagepath if anime else '')
+        self.numberseason = var.Var(str(anime.numberseason) if anime else '')
+        self.numberepisodes = var.Var(str(anime.numberepisodes) if anime else '')
+        self.description = var.Var(anime.description if anime else '')
+        # numberseason/numberepisodes convertis en str car les inputs HTML sont du texte
+        self.error_message = ''
+
+    def validate_and_save(self, comp):
+        """Valide les champs, sauvegarde en BDD, et retourne a la liste.
+
+        Args:
+            comp: le Component qui encapsule ce formulaire.
+            comp.answer() signale a AnimeApp de revenir a la liste.
+        """
+        # Recupere les valeurs actuelles des Var
+        title = self.title()
+        imagepath = self.imagepath()
+        numberseason = self.numberseason()
+        numberepisodes = self.numberepisodes()
+        description = self.description()
+
+        # --- VALIDATION : champs obligatoires ---
+        if not title or not imagepath or not numberseason or not numberepisodes or not description:
+            self.error_message = 'Tous les champs sont obligatoires !'
+            return
+            # return sans comp.answer() = reste sur le formulaire, re-affiche avec l'erreur
+
+        # --- VALIDATION : nombres entiers ---
+        try:
+            numberseason = int(numberseason)
+            numberepisodes = int(numberepisodes)
+        except ValueError:
+            self.error_message = 'Saison et episodes doivent etre des nombres entiers !'
+            return
+
+        if self.anime:
+            # --- UPDATE : modifie l'anime existant ---
+            self.anime.title = title
+            self.anime.imagepath = imagepath
+            self.anime.numberseason = numberseason
+            self.anime.numberepisodes = numberepisodes
+            self.anime.description = description
+            # Modifier les attributs d'un objet Elixir = UPDATE en BDD au commit
+        else:
+            # --- INSERT : cree un nouvel anime ---
+            Anime(
+                title=title,
+                imagepath=imagepath,
+                numberseason=numberseason,
+                numberepisodes=numberepisodes,
+                description=description
+            )
+            # Instancier un Entity Elixir = INSERT INTO anime(...) au commit
+
+        comp.answer()
+        # comp.answer() declenche le callback on_answer() enregistre par AnimeApp
+        # -> AnimeApp.show_list() est appele -> self.content.becomes(AnimeList)
+
+    def cancel(self, comp):
+        """Annule et retourne a la liste sans sauvegarder."""
+        comp.answer()
+
+
+# --- VUE : rendu HTML du formulaire ---
+@presentation.render_for(AnimeForm)
+def render_anime_form(self, h, comp, *args):
+    """Genere le HTML du formulaire de creation/edition."""
+
+    # --- TITRE (adapte au mode) ---
+    h << h.h1('Modifier un Anime' if self.anime else 'Creer un Anime')
+
+    # --- ERREUR (si validation echouee) ---
+    if self.error_message:
+        h << h.div(self.error_message, class_='error')
+
+    # --- FORMULAIRE ---
+    with h.form:
+        # h.form cree <form method="POST">
+        # Nagare gere l'action et le routage des callbacks automatiquement
+
+        # Champ Titre
+        h << h.label('Titre :', for_='title')
+        h << h.input(type='text', id='title', value=self.title()).action(self.title)
+        # value=self.title() : valeur actuelle du Var (pre-remplie ou vide)
+        # .action(self.title) : a la soumission, Nagare appelle self.title(valeur_saisie)
+        h << h.br
+
+        # Champ Chemin image
+        h << h.label('Chemin image (ex: images/monimage.jpg) :', for_='imagepath')
+        h << h.input(type='text', id='imagepath', value=self.imagepath()).action(self.imagepath)
+        h << h.br
+
+        # Champ Numero de saison
+        h << h.label('Numero de saison :', for_='numberseason')
+        h << h.input(type='text', id='numberseason', value=self.numberseason()).action(self.numberseason)
+        h << h.br
+
+        # Champ Nombre d'episodes
+        h << h.label("Nombre d'episodes :", for_='numberepisodes')
+        h << h.input(type='text', id='numberepisodes', value=self.numberepisodes()).action(self.numberepisodes)
+        h << h.br
+
+        # Champ Description
+        h << h.label('Description :', for_='description')
+        with h.textarea(id='description', rows='5', cols='50').action(self.description):
+            h << self.description()
+        # textarea avec .action() fonctionne comme input : Nagare passe le contenu au Var
+        h << h.br
+
+        # Bouton Valider
+        h << h.input(type='submit', value='Valider', class_='btn btn-save').action(
+            self.validate_and_save, comp
+        )
+        # .action(self.validate_and_save, comp) :
+        # au clic sur Valider, Nagare appelle self.validate_and_save(comp)
+        # Ordre d'execution : d'abord les .action() des inputs (mettent a jour les Var)
+        # puis le .action() du submit (valide et sauvegarde)
+
+        h << ' '
+
+        # Bouton Annuler
+        h << h.input(type='submit', value='Annuler', class_='btn btn-cancel').action(
+            self.cancel, comp
+        )
+
+    return h.root
+
+# COMPOSANT 3 : AnimeApp — Composant RACINE (navigateur)
+
+class AnimeApp(object):
+    """Composant racine de l'application.
+
+    Contient self.content : un Component Nagare qui bascule entre
+    AnimeList (page d'accueil) et AnimeForm (formulaire).
+
+    C'est le SEUL composant rendu par Nagare. Son render affiche self.content,
+    qui lui-meme rend soit AnimeList soit AnimeForm selon l'etat de navigation."""
+
+    def __init__(self):
+        self.content = component.Component(AnimeList(self))
+        # Cree un Component Nagare contenant un AnimeList
+        # AnimeList recoit 'self' (AnimeApp) pour pouvoir naviguer
+        # Au depart, l'application affiche la liste des animes
+
+    def show_form(self, anime=None):
+        """Bascule self.content vers le formulaire.
+        Args:
+            anime: objet Anime existant (edition) ou None (creation)"""
+        
+        self.content.becomes(AnimeForm(anime))
+        # content.becomes(obj) REMPLACE l'objet interne du Component
+        # Avant : self.content rendait AnimeList
+        # Apres : self.content rend AnimeForm
+        # Au prochain render, c'est render_anime_form() qui sera appele
+
+        self.content.on_answer(self.show_list)
+        # on_answer(callback) : quand AnimeForm fait comp.answer(),
+        # Nagare appelle automatiquement self.show_list()
+        # C'est le mecanisme de retour : formulaire -> liste
+
+    def show_list(self, answer=None):
+        """Bascule self.content vers la liste des animes.
+        Args:
+            answer: valeur retournee par comp.answer() (non utilisee)"""
+        
+        self.content.becomes(AnimeList(self))
+        # Remplace le formulaire par une nouvelle instance d'AnimeList
+        # La page d'accueil se re-affiche avec les donnees a jour
+
+
+# --- Vue Racine : rend self.content dans un container ---
+@presentation.render_for(AnimeApp)
+def render_anime_app(self, h, *args):
+    """Rendu du composant racine.
+
+    Cette fonction ne fait que :
+    1. Charger le CSS
+    2. Creer un conteneur <div>
+    3. Rendre self.content (qui est soit AnimeList, soit AnimeForm)
+
+    C'est self.content qui decide QUOI afficher"""
+
+    # Charge la feuille de style dans le <head>
+    h.head.css_url('css/style.css')
+
+    with h.div(class_='container'):
+        # Conteneur principal
+        h << self.content
+    return h.root
+
+
+app = AnimeApp
+# Nagare appelle app() = AnimeApp() pour creer le composant racine a chaque nouvelle session utilisateur

@@ -1,0 +1,4 @@
+
+[nagare.applications]
+nagareessai = nagareessai.app:app
+    

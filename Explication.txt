@@ -1,0 +1,80 @@
+--------------------------------------------- INSTALLATION -------------------------------------------------
+1. Installer Python 2.7.18                                                                                                                                                                                                                                                                                                                                                                                                                                    
+Telecharger depuis : https://www.python.org/ftp/python/2.7.18/python-2.7.18.amd64.msi                                                                                                                                                                                                                                                                                                                                                                         
+Installer dans C:\Python27, cocher "Add to PATH".
+
+2. Installer les dependances
+
+Ouvrir un terminal et executer dans cet ordre :
+
+C:\Python27\Scripts\easy_install.exe babel==2.9.1
+C:\Python27\Scripts\easy_install.exe SQLAlchemy==1.3.24
+C:\Python27\Scripts\easy_install.exe PyMySQL==0.10.1
+C:\Python27\Scripts\easy_install.exe Paste==3.5.0
+C:\Python27\Scripts\easy_install.exe WebOb==1.7.4
+C:\Python27\Scripts\easy_install.exe configobj==5.0.6
+C:\Python27\Scripts\easy_install.exe lxml==4.6.3
+C:\Python27\python.exe -m pip install git+https://github.com/mizi/PEAK-Rules.git
+C:\Python27\Scripts\easy_install.exe nagare
+
+3. Copier le projet
+
+Copier le dossier NagareEssai sur le nouveau PC.
+
+4. Enregistrer l'application
+
+cd C:\chemin\vers\NagareEssai
+C:\Python27\python.exe setup.py develop
+
+5. Configurer MySQL
+
+- Installer XAMPP, demarrer MySQL
+- Creer la base nagaretest dans phpMyAdmin
+- Creer la table anime avec la structure :
+
+CREATE TABLE anime (
+    id int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    imagepath varchar(500) NOT NULL,
+    title varchar(500) NOT NULL,
+    numberseason int(11) NOT NULL,
+    numberepisodes int(11) NOT NULL,
+    description varchar(3000) NOT NULL
+);
+
+- Si le user/password MySQL est different de root sans mot de passe, modifier la ligne uri dans conf/nagareessai.cfg
+
+6. Lancer
+
+C:\Python27\Scripts\nagare-admin.exe serve nagareessai
+
+Ouvrir http://localhost:8080/nagareessai
+
+7. Version Nagare et Stackless Python
+
+C:\Python27\Scripts\nagare-admin.exe info
+
+-----------------------------------------------------------------------------------------------------------------------
+
+Structure Projet : 
+
+NagareEssai/
+  ├── setup.py              ← Configuration du package Python
+  ├── conf/
+  │   └── nagareessai.cfg   ← Configuration Nagare (app + BDD)
+  ├── static/
+  │   ├── css/
+  │   │   └── style.css     ← Feuille de style
+  │   └── images/           ← Dossier images animes
+  ├── nagareessai/
+  │   ├── __init__.py
+  │   ├── models.py          ← Modèle Anime (Elixir/SQLAlchemy)
+  │   └── app.py             ← Application CRUD complète
+
+setup.py                Enregistre l'app aupres de Nagare via entry_points
+conf/nagareessai.cfg    Configure l'app (Nom, BDD MySQL, fichier statiques)
+nagareessai/models.py   Difinit le modele Anime avec Elexir (mapping vers la table MySQL)
+nagareessai/app.py      Application complete : liste, creation, modification, suppression
+static/css/style.css    Theme css
+
+Nagare 0.5.1 avec stackless Python 2 uniquement
+Nagare nouvelle version Python 3+
