@@ -87,3 +87,12 @@ Nagare nouvelle version Python 3+
 
 Context : Lors de l'installation de Stackless Python avec Conda, les CMD restait toujours bloquer sur l'environnement Conda avec le (base).
 Solution : C:\Users\julie\miniconda3\Scripts\conda.exe config --set auto_activate_base false
+
+Context : Jusau'a maintenant le hot reloader de Nagare ne fonctionne pas. Aucune solution trouver de mon coder. Je demande a Claude.
+Solution : Le reloader de nagare par defaut essaie d'executer comme cela : "python.exe nagare-admin" sauf que ce n'est pas un fichier .py
+Claude corrige le reloader de nagare a la ligne 59 : 
+miniconda3\envs\stackless27\lib\site-packages\nagare-0.5.1-py2.7.egg\nagare\admin\reloader.py
+
+59 -        args = [_quote_first_command_arg(sys.executable)] + sys.argv
+
+Cela a pour consequence de lancer a la place le fichier "nagare-admin-script.py" qui lui existe bien.
