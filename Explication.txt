@@ -47,6 +47,7 @@ CREATE TABLE anime (
 
 C:\Python27\Scripts\nagare-admin.exe serve nagareessai
 ou
+conda activate stackless27 (Pas obligatoire)
 C:\Users\julie\miniconda3\envs\stackless27\Scripts\nagare-admin.exe serve nagareessai
 
 
@@ -81,3 +82,8 @@ static/css/style.css    Theme css
 
 Nagare 0.5.1 avec stackless Python 2 uniquement
 Nagare nouvelle version Python 3+
+
+--------------------------------------------- CORRECTION D'ERREUR -------------------------------------------------
+
+Context : Lors de l'installation de Stackless Python avec Conda, les CMD restait toujours bloquer sur l'environnement Conda avec le (base).
+Solution : C:\Users\julie\miniconda3\Scripts\conda.exe config --set auto_activate_base false
