@@ -163,6 +163,15 @@ input[type="text"]:focus, textarea:focus {
     border-color: #e94560;
 }
 
+.file-hidden {
+    display: none;
+}
+
+.btn-file {
+    margin-top: 5px;
+    cursor: pointer;
+}
+
 input[type="submit"] {
     margin-top: 20px;
 }

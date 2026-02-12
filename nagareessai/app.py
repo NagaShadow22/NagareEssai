@@ -256,9 +256,10 @@ def render_anime_form(self, h, comp, *args):
         # Champ Image (upload)
         h << h.label('Image :', for_='imagepath')
         if self.anime and self.anime.imagepath:
-            #En mode modification on verifie qu'une image existe et son path. Si oui on affiche le path actuel
+            # En mode modification on verifie qu'une image existe et son path. Si oui on affiche le path actuel
             h << h.p(u'Image actuelle : ' + self.anime.imagepath, class_='current-image')
-        h << h.input(type='file', id='imagepath').action(self.handle_upload)
+        h << h.input(type='file', id='imagepath', class_='file-hidden').action(self.handle_upload)
+        h << h.label('Importer Image', for_='imagepath', class_='btn btn-save btn-file')
         h << h.br
 
         # Champ Numero de saison
