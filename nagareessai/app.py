@@ -7,6 +7,9 @@
 # Flux : AnimeApp rend self.content
 #        self.content bascule entre AnimeList et AnimeForm via becomes()
 
+import os
+import cgi
+
 from nagare import component, presentation, var
 # component    : Component() encapsule un objet Python en composant web Nagare
 # presentation : @render_for associe une vue HTML a une classe Python
@@ -146,25 +149,43 @@ class AnimeForm(object):
         #   Passe comme .action(var) sur un input, Nagare appelle var(texte_saisi)
         self.title = var.Var(anime.title if anime else '')
         self.imagepath = var.Var(anime.imagepath if anime else '')
+        self.uploaded_filename = None  # Nom du fichier uploade (string)
+        self.uploaded_data = None     # Contenu binaire du fichier (bytes)
         self.numberseason = var.Var(str(anime.numberseason) if anime else '')
         self.numberepisodes = var.Var(str(anime.numberepisodes) if anime else '')
         self.description = var.Var(anime.description if anime else '')
         # numberseason/numberepisodes convertis en str car les inputs HTML sont du texte
         self.error_message = ''
 
-    def validate_and_save(self, comp):
-        """Valide les champs, sauvegarde en BDD, et retourne a la liste.
+    def handle_upload(self, upload):
+        "Recoit le cgi.FieldStorage du champ file, lit le contenu immediatement et stocke le nom + l'image."
+        if isinstance(upload, cgi.FieldStorage) and upload.filename:
+            #isinstance verifie que l'image uploader soit du bon type et verifie egalement que celui ci a bien un filename qui n'est pas vide.
+            self.uploaded_filename = os.path.basename(upload.filename)
+            self.uploaded_data = upload.file.read()
 
-        Args:
-            comp: le Component qui encapsule ce formulaire.
-            comp.answer() signale a AnimeApp de revenir a la liste.
-        """
+    def validate_and_save(self, comp):
+        #Valide les champs, sauvegarde en BDD, et retourne a la liste.
+        #comp: le Component qui encapsule ce formulaire.
+
         # Recupere les valeurs actuelles des Var
         title = self.title()
-        imagepath = self.imagepath()
         numberseason = self.numberseason()
         numberepisodes = self.numberepisodes()
         description = self.description()
+
+        # --- Traitement de l'image ---
+        if self.uploaded_data:
+            # Nouveau fichier uploader : on le sauvegarde dans static/images/
+            destination = os.path.join('static', 'images', self.uploaded_filename)
+            with open(destination, 'wb') as file:
+                file.write(self.uploaded_data)
+            imagepath = self.uploaded_filename
+        elif self.anime:
+            # Mode modification sans nouveau fichier d'image : on garde l'image deja existante
+            imagepath = self.anime.imagepath
+        else:
+            imagepath = ''
 
         # --- VALIDATION : champs obligatoires ---
         if not title or not imagepath or not numberseason or not numberepisodes or not description:
@@ -232,9 +253,12 @@ def render_anime_form(self, h, comp, *args):
         # .action(self.title) : a la soumission, Nagare appelle self.title(valeur_saisie)
         h << h.br
 
-        # Champ Chemin image
-        h << h.label('Chemin image (ex: images/monimage.jpg) :', for_='imagepath')
-        h << h.input(type='text', id='imagepath', value=self.imagepath()).action(self.imagepath)
+        # Champ Image (upload)
+        h << h.label('Image :', for_='imagepath')
+        if self.anime and self.anime.imagepath:
+            #En mode modification on verifie qu'une image existe et son path. Si oui on affiche le path actuel
+            h << h.p(u'Image actuelle : ' + self.anime.imagepath, class_='current-image')
+        h << h.input(type='file', id='imagepath').action(self.handle_upload)
         h << h.br
 
         # Champ Numero de saison
