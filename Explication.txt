@@ -46,6 +46,9 @@ CREATE TABLE anime (
 6. Lancer
 
 C:\Python27\Scripts\nagare-admin.exe serve nagareessai
+ou
+C:\Users\julie\miniconda3\envs\stackless27\Scripts\nagare-admin.exe serve nagareessai
+
 
 Ouvrir http://localhost:8080/nagareessai
 
