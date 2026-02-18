@@ -4,8 +4,7 @@
 # - AnimeApp  : composant RACINE, contient self.content et gere la navigation
 # - AnimeForm : formulaire de creation / modification
 #
-# Flux : AnimeApp rend self.content
-#        self.content bascule entre AnimeList et AnimeForm avec becomes()
+# Flux : AnimeApp rend self.content. self.content bascule entre AnimeList et AnimeForm avec becomes()
 
 import os
 import cgi
