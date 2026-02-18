@@ -1,0 +1,4 @@
+Ajout d'un bouton import image : OK
+
+Prochaine fonctionnalité : 
+- 3 page de navigation (En cours, A voir, Terminer)
